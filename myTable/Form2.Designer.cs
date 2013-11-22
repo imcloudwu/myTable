@@ -197,6 +197,7 @@
             this.DoubleBuffered = true;
             this.Name = "Form2";
             this.Text = "新生入學方式統計表";
+            this.Load += new System.EventHandler(this.Form2_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewX1)).EndInit();
             this.ResumeLayout(false);
 
