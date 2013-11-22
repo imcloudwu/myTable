@@ -617,11 +617,6 @@ namespace myTable
             dataGridViewX1.Rows.Clear();  //清除datagridview資料
             LoadLastRecord(); //再次讀入Mapping設定
         }
-
-        private void Form2_Load(object sender, EventArgs e)
-        {
-
-        }
     }
 
 }

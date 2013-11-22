@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 
 namespace myTable
 {
-    //測試註記2013.11.22
-    
     public class Progress
     {
         [FISCA.MainMethod]
