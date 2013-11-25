@@ -165,6 +165,7 @@ namespace myTable
             _SchoolYear = comboBoxEx2.Text;
             FISCA.Presentation.MotherForm.SetStatusBarMessage("正在產生新生入學方式統計表...");
             this.buttonX1.Enabled = false;
+            this.buttonX3.Enabled = false;
             this.dataGridViewX1.Enabled = false;
             this.comboBoxEx1.Enabled = false;
             this.comboBoxEx2.Enabled = false;
@@ -177,6 +178,7 @@ namespace myTable
         private void _BGWClassStudentAbsenceDetail_Completed(object sender, RunWorkerCompletedEventArgs e)
         {
             this.buttonX1.Enabled = true;
+            this.buttonX3.Enabled = true;
             this.dataGridViewX1.Enabled = true;
             this.comboBoxEx1.Enabled = true;
             this.comboBoxEx2.Enabled = true;
