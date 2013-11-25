@@ -14,6 +14,7 @@ namespace myTable
         public List<myStudent> error_list, clean_list;
         public Dictionary<String, List<myStudent>> dic_byDept;
         Dictionary<String, String> Dept_ref; //科別代碼對照,key=code,value=name;
+        
 
         public Filter(List<myStudent> list, String dept)
         {
@@ -178,7 +179,6 @@ namespace myTable
             }
             return code;
         }
-
     }
 }
 

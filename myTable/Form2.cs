@@ -17,6 +17,7 @@ namespace myTable
 {
     public partial class Form2 : BaseForm
     {
+        String _SchoolYear; //當前學年度
         private BackgroundWorker _BGWClassStudentAbsenceDetail; //背景模式
         Dictionary<String, String> _column3Items; //全部類別對照表,key=TagId,value=prefix+":"+name
         Dictionary<String, List<String>> _mappingData;//mapping資料
@@ -30,6 +31,7 @@ namespace myTable
             InitializeComponent();
             Column2Prepare();
             Column3Prepare();
+            SchoolYearItem();
             LoadLastRecord();
         }
 
@@ -88,9 +90,13 @@ namespace myTable
 
         private void buttonX1_Click(object sender, EventArgs e)
         {
-            SaveMappingRecord();
-            ReadMappingData();
-            DataSetting();
+            if (tryConvert(comboBoxEx2.Text))
+            {
+                SaveMappingRecord();
+                ReadMappingData();
+                DataSetting();
+            }
+            
         }
 
         private void buttonX2_Click(object sender, EventArgs e)
@@ -156,9 +162,12 @@ namespace myTable
         void DataSetting()
         {
             dept = this.comboBoxEx1.Text;
+            _SchoolYear = comboBoxEx2.Text;
             FISCA.Presentation.MotherForm.SetStatusBarMessage("正在產生新生入學方式統計表...");
             this.buttonX1.Enabled = false;
             this.dataGridViewX1.Enabled = false;
+            this.comboBoxEx1.Enabled = false;
+            this.comboBoxEx2.Enabled = false;
             _BGWClassStudentAbsenceDetail = new BackgroundWorker();
             _BGWClassStudentAbsenceDetail.DoWork += new DoWorkEventHandler(_BGWClassStudentAbsenceDetail_DoWork);
             _BGWClassStudentAbsenceDetail.RunWorkerCompleted += new RunWorkerCompletedEventHandler(_BGWClassStudentAbsenceDetail_Completed);
@@ -169,6 +178,8 @@ namespace myTable
         {
             this.buttonX1.Enabled = true;
             this.dataGridViewX1.Enabled = true;
+            this.comboBoxEx1.Enabled = true;
+            this.comboBoxEx2.Enabled = true;
             FISCA.Presentation.MotherForm.SetStatusBarMessage("產生 新生入學方式統計表 已完成");
 
             SaveFileDialog sd = new System.Windows.Forms.SaveFileDialog();
@@ -203,7 +214,7 @@ namespace myTable
             QueryHelper _Q = new QueryHelper();
 
             //SQL查詢要求的年級資料
-            DataTable dt = _Q.Select("select student.id,student.name,student.gender,student.ref_class_id,student.status,class.class_name,class.grade_year,dept.name as dept_name,tag_student.ref_tag_id from student left join class on student.ref_class_id=class.id left join dept on class.ref_dept_id=dept.id left join tag_student on student.id= tag_student.ref_student_id where student.status='1' and class.grade_year='" + 1 + "'");
+            DataTable dt = _Q.Select("select student.id,student.name,student.gender,student.ref_class_id,student.status,class.class_name,class.grade_year,dept.name as dept_name,tag_student.ref_tag_id from student left join class on student.ref_class_id=class.id left join dept on class.ref_dept_id=dept.id left join tag_student on student.id= tag_student.ref_student_id where student.status in ('1','4','16') and class.grade_year='1'");
 
             //建立myStuden物件放至List中
             foreach (DataRow row in dt.Rows)
@@ -216,17 +227,46 @@ namespace myTable
                 String grade_year = row["grade_year"].ToString();
                 String dept_name = row["dept_name"].ToString();
                 String ref_tag_id = row["ref_tag_id"].ToString();
-                if (!myDic.ContainsKey(id))
+                if (!myDic.ContainsKey(id)) //ID當key,不存在就建立
                 {
                     myDic.Add(id, new myStudent(id, name, gender, ref_class_id, class_name, grade_year, dept_name, new List<string>()));
                 }
                 myDic[id].Tag.Add(ref_tag_id);
             }
 
-            mylist = myDic.Values.ToList();
-
+            //取得新生異動資料清單
+            List<K12.Data.UpdateRecordRecord> records = K12.Data.UpdateRecord.SelectByStudentIDs(myDic.Keys.ToList());  
+            foreach(KeyValuePair<String,myStudent> kvp in myDic)
+            {
+                if (CheckStudentStatus(records,kvp.Key)) //檢查新生異動資料是否符合
+                {
+                    mylist.Add(kvp.Value);  //符合者加入mylist清單
+                }
+            }
+            
             filter = new Filter(mylist, dept);
             Export();
+
+            
+        }
+
+        //確認學生為一般新生,排除重讀生等其他狀態
+        public bool CheckStudentStatus(List<K12.Data.UpdateRecordRecord> records,String id)
+        {
+            foreach (K12.Data.UpdateRecordRecord record in records)
+            {
+                    if (record.StudentID == id)  //找到符合的ID開始後續比對
+                    {
+                        if (record.SchoolYear.ToString() == _SchoolYear) //確認學年度為當前學年度
+                        {
+                            if (Convert.ToInt16(record.UpdateCode) < 100) //異動代碼小於100
+                            {
+                                return true;
+                            }
+                        }
+                    }
+            }
+            return false;
         }
 
         //輸出至Excel
@@ -236,7 +276,12 @@ namespace myTable
             Worksheet ws;
             Cells cs;
             int index, row;
+            _wk.Worksheets.Add();
             ////該年級學生總表
+            //_wk.Worksheets.Add();
+            //ws = _wk.Worksheets[2];
+            //ws.Name = "All_List";
+            //cs = ws.Cells;
             //cs["A1"].PutValue("ID");
             //cs["B1"].PutValue("Name");
             //cs["C1"].PutValue("Gender");
@@ -265,8 +310,8 @@ namespace myTable
             //}
            
             //該科別異常的學生資料表
-            //_wk.Worksheets.Add();
-            _wk.Worksheets.Add();
+            
+            
             ws = _wk.Worksheets[1];
             ws.Name = "異常資料表";
             cs = ws.Cells;
@@ -540,6 +585,7 @@ namespace myTable
             cs[36, 23].PutValue(filter.getGenderCount(collect__LastGradeT, "0")); //應屆原住民女生數
             cs[37, 22].PutValue(filter.getGenderCount(collect__LastGradeF, "1")); //非應屆原住民男生數
             cs[37, 23].PutValue(filter.getGenderCount(collect__LastGradeF, "0")); //非應屆原住民女生數
+            cs["U5"].PutValue(_SchoolYear); 
         }
 
         public void SaveMappingRecord() //儲存上次Mapping紀錄
@@ -616,6 +662,30 @@ namespace myTable
             _A.DeletedValues(UDTlist); //清除UDT資料
             dataGridViewX1.Rows.Clear();  //清除datagridview資料
             LoadLastRecord(); //再次讀入Mapping設定
+        }
+
+        private void SchoolYearItem() //建立comboBoxEx2的下拉清單
+        {
+            int school_year = Convert.ToInt16(K12.Data.School.DefaultSchoolYear);
+            for (int i = -3; i < 4;i++ )
+            {
+                comboBoxEx2.Items.Add(school_year+i);
+            }
+            comboBoxEx2.Text = K12.Data.School.DefaultSchoolYear;
+        }
+
+        private bool tryConvert(String str) //避免comboBoxEx2被輸入非數字字串
+        {
+            try
+            {
+                Convert.ToInt16(str);
+                return true;
+            }
+            catch
+            {
+                MessageBox.Show("學年度請確認輸入正確數值");
+                return false;
+            }
         }
     }
 
