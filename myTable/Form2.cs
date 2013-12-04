@@ -92,11 +92,24 @@ namespace myTable
         {
             if (tryConvert(comboBoxEx2.Text))
             {
-                SaveMappingRecord();
-                ReadMappingData();
-                DataSetting();
+                try
+                {
+                    SaveMappingRecord();
+                    ReadMappingData();
+                    DataSetting();
+                }
+                catch
+                {
+                    MessageBox.Show("網路或資料庫異常,請稍後再試...");
+                    this.buttonX1.Enabled = true;
+                    this.linkLabel1.Enabled = true;
+                    this.dataGridViewX1.Enabled = true;
+                    this.comboBoxEx1.Enabled = true;
+                    this.comboBoxEx2.Enabled = true;
+                }
+
             }
-            
+
         }
 
         private void buttonX2_Click(object sender, EventArgs e)
@@ -115,7 +128,7 @@ namespace myTable
                     foreach (KeyValuePair<String, String> k in _column3Items) //尋找選項的TagID
                     {
                         String item = r.Cells[1].Value.ToString();
-                        if(!item.Contains(":")) //若選項無":"字串代表建立時prefix為空白,查詢時需補上":"
+                        if (!item.Contains(":")) //若選項無":"字串代表建立時prefix為空白,查詢時需補上":"
                         {
                             item = ":" + item;
                         }
@@ -165,7 +178,7 @@ namespace myTable
             _SchoolYear = comboBoxEx2.Text;
             FISCA.Presentation.MotherForm.SetStatusBarMessage("正在產生新生入學方式統計表...");
             this.buttonX1.Enabled = false;
-            this.buttonX3.Enabled = false;
+            this.linkLabel1.Enabled = false;
             this.dataGridViewX1.Enabled = false;
             this.comboBoxEx1.Enabled = false;
             this.comboBoxEx2.Enabled = false;
@@ -178,7 +191,7 @@ namespace myTable
         private void _BGWClassStudentAbsenceDetail_Completed(object sender, RunWorkerCompletedEventArgs e)
         {
             this.buttonX1.Enabled = true;
-            this.buttonX3.Enabled = true;
+            this.linkLabel1.Enabled = true;
             this.dataGridViewX1.Enabled = true;
             this.comboBoxEx1.Enabled = true;
             this.comboBoxEx2.Enabled = true;
@@ -237,36 +250,34 @@ namespace myTable
             }
 
             //取得新生異動資料清單
-            List<K12.Data.UpdateRecordRecord> records = K12.Data.UpdateRecord.SelectByStudentIDs(myDic.Keys.ToList());  
-            foreach(KeyValuePair<String,myStudent> kvp in myDic)
+            List<K12.Data.UpdateRecordRecord> records = K12.Data.UpdateRecord.SelectByStudentIDs(myDic.Keys.ToList());
+            foreach (KeyValuePair<String, myStudent> kvp in myDic)
             {
-                if (CheckStudentStatus(records,kvp.Key)) //檢查新生異動資料是否符合
+                if (CheckStudentStatus(records, kvp.Key)) //檢查新生異動資料是否符合
                 {
                     mylist.Add(kvp.Value);  //符合者加入mylist清單
                 }
             }
-            
+
             filter = new Filter(mylist, dept);
             Export();
-
-            
         }
 
         //確認學生為一般新生,排除重讀生等其他狀態
-        public bool CheckStudentStatus(List<K12.Data.UpdateRecordRecord> records,String id)
+        public bool CheckStudentStatus(List<K12.Data.UpdateRecordRecord> records, String id)
         {
             foreach (K12.Data.UpdateRecordRecord record in records)
             {
-                    if (record.StudentID == id)  //找到符合的ID開始後續比對
+                if (record.StudentID == id)  //找到符合的ID開始後續比對
+                {
+                    if (record.SchoolYear.ToString() == _SchoolYear) //確認學年度為當前學年度
                     {
-                        if (record.SchoolYear.ToString() == _SchoolYear) //確認學年度為當前學年度
+                        if (Convert.ToInt16(record.UpdateCode) < 100) //異動代碼小於100
                         {
-                            if (Convert.ToInt16(record.UpdateCode) < 100) //異動代碼小於100
-                            {
-                                return true;
-                            }
+                            return true;
                         }
                     }
+                }
             }
             return false;
         }
@@ -310,10 +321,10 @@ namespace myTable
             //    cs[index, 7].PutValue(column7);
             //    index++;
             //}
-           
+
             //該科別異常的學生資料表
-            
-            
+
+
             ws = _wk.Worksheets[1];
             ws.Name = "異常資料表";
             cs = ws.Cells;
@@ -347,7 +358,7 @@ namespace myTable
             //新生入學方式統計表
             Workbook wk2 = new Workbook();
             wk2.Open(new MemoryStream(Properties.Resources.template)); //開啟範本文件
-            
+
             _wk.Worksheets[0].Copy(wk2.Worksheets[0]); //複製範本文件
             ws = _wk.Worksheets[0];
             ws.Name = "新生入學方式統計表";
@@ -511,7 +522,7 @@ namespace myTable
                 if (index > 36) { index = 36; row += 2; } //換行換欄
                 if (nmap.Value.Count == 0)  //遇到空值index++並繼續迴圈
                 {
-                    index ++;
+                    index++;
                     continue;
                 }
                 List<myStudent> list = new List<myStudent>();
@@ -587,7 +598,7 @@ namespace myTable
             cs[36, 23].PutValue(filter.getGenderCount(collect__LastGradeT, "0")); //應屆原住民女生數
             cs[37, 22].PutValue(filter.getGenderCount(collect__LastGradeF, "1")); //非應屆原住民男生數
             cs[37, 23].PutValue(filter.getGenderCount(collect__LastGradeF, "0")); //非應屆原住民女生數
-            cs["U5"].PutValue(_SchoolYear); 
+            cs["U5"].PutValue(_SchoolYear);
         }
 
         public void SaveMappingRecord() //儲存上次Mapping紀錄
@@ -595,11 +606,11 @@ namespace myTable
             AccessHelper _A = new AccessHelper();
             List<myTableUDT> UDTlist = _A.Select<myTableUDT>();
             _A.DeletedValues(UDTlist); //清除UDT資料
-            
+
             UDTlist = new List<myTableUDT>(); //清空UDTlist
             foreach (DataGridViewRow row in dataGridViewX1.Rows) //取得DataDataGridViewRow資料
             {
-                if(row.Cells[0].Value == null) //遇到空白的Target即跳到下個loop
+                if (row.Cells[0].Value == null) //遇到空白的Target即跳到下個loop
                 {
                     continue;
                 }
@@ -607,7 +618,7 @@ namespace myTable
                 String target = row.Cells[0].Value.ToString();
                 String source = "";
                 if (row.Cells[1].Value != null) { source = row.Cells[1].Value.ToString(); }
-                
+
                 myTableUDT obj = new myTableUDT();
                 obj.Target = target;
                 obj.Source = source;
@@ -622,7 +633,7 @@ namespace myTable
             AccessHelper _A = new AccessHelper();
             List<myTableUDT> UDTlist = _A.Select<myTableUDT>(); //檢查UDT並回傳資料
             DataGridViewRow row;
-            if(UDTlist.Count >0) //UDT內有設定才做讀取
+            if (UDTlist.Count > 0) //UDT內有設定才做讀取
             {
                 for (int i = 0; i < UDTlist.Count; i++)
                 {
@@ -644,34 +655,25 @@ namespace myTable
                     dataGridViewX1.Rows.Add(row);
                 }
             }
-            
+
         }
 
         //初始化MappingData資料
         public void SetMappingDataKey()
         {
             _mappingData = new Dictionary<string, List<string>>();
-            foreach(String s in Column2.Items)
+            foreach (String s in Column2.Items)
             {
                 _mappingData.Add(s, new List<string>());
             }
         }
 
-        private void buttonX3_Click(object sender, EventArgs e) //刪除紀錄
-        {
-            AccessHelper _A = new AccessHelper();
-            List<myTableUDT> UDTlist = _A.Select<myTableUDT>();
-            _A.DeletedValues(UDTlist); //清除UDT資料
-            dataGridViewX1.Rows.Clear();  //清除datagridview資料
-            LoadLastRecord(); //再次讀入Mapping設定
-        }
-
         private void SchoolYearItem() //建立comboBoxEx2的下拉清單
         {
             int school_year = Convert.ToInt16(K12.Data.School.DefaultSchoolYear);
-            for (int i = -3; i < 4;i++ )
+            for (int i = -3; i < 4; i++)
             {
-                comboBoxEx2.Items.Add(school_year+i);
+                comboBoxEx2.Items.Add(school_year + i);
             }
             comboBoxEx2.Text = K12.Data.School.DefaultSchoolYear;
         }
@@ -688,6 +690,15 @@ namespace myTable
                 MessageBox.Show("學年度請確認輸入正確數值");
                 return false;
             }
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            AccessHelper _A = new AccessHelper();
+            List<myTableUDT> UDTlist = _A.Select<myTableUDT>();
+            _A.DeletedValues(UDTlist); //清除UDT資料
+            dataGridViewX1.Rows.Clear();  //清除datagridview資料
+            LoadLastRecord(); //再次讀入Mapping設定
         }
     }
 
