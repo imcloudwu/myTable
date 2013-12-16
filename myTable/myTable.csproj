@@ -86,6 +86,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DataGridViewComboBoxExColumn.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Filter.cs" />
     <Compile Include="Form2.cs">
       <SubType>Form</SubType>
